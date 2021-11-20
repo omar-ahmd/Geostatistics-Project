@@ -44,7 +44,7 @@ rm(list=ls()) #Clean the working directory
 1. load the dataset from jura_pred.csv (on the cloud)
 ```{r}
 #Data set
-jura = read.csv("../jura/jura_pred.csv")
+jura = read.csv("../../jura/jura_pred.csv")
 ```
 2. What is the class of the dataset?
 ```{r}
@@ -494,18 +494,18 @@ The information threshold for the concentration of cobalt in soils is *12 mg/kg*
 Example with the ordinary kriging (where mres is the fitted variogram of the cobalt)
 
 ```{r}
-res_simu = simtub(jurarg_KU,gridrg_KU,mres,neigh,nbsimu=100,nbtuba=1000)
+#res_simu = simtub(jurarg_KU,gridrg_KU,mres,neigh,nbsimu=100,nbtuba=1000)
 ```
 
 2. Compute the mean surface of the area of exceedance as well as its associated centered 95% confidence interval.
 ```{r}
-res_simu[,"Simu.Co.S*"] = res_simu[,"Simu.Co.S*"]>12
-res_simu[,"Simu.Co.S1"] <- rowMeans(res_simu[,"Simu.Co.S*"])
+#res_simu[,"Simu.Co.S*"] = res_simu[,"Simu.Co.S*"]>12
+#res_simu[,"Simu.Co.S1"] <- rowMeans(res_simu[,"Simu.Co.S*"])
 ```
 
 3. Compute and plot the exceedance probability map. Comment.
 ```{r}
-plot(res_simu,name="Simu.Co.S1",pos.legend=1)
+#plot(res_simu,name="Simu.Co.S1",pos.legend=1)
 ```
 
 # Summary -- Discussion
