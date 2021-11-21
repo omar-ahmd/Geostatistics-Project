@@ -253,29 +253,54 @@ add.variable =function(var,grid,varname,gridtemp.=gridtemp)
 
 
 # Interpolation exercise
-Provide the maps of the cobalt concentration over the Swiss Jura obtained with several regression/interpolation methods, e.g.:
-
-
-* anova
-* linear regression on the coordinates
-* local polynomial regression
-* Nearest neighbour
-* Inverse distance
-* ...
-
 
 1. Prediction by the mean
 
-```{r}
+In this method we will predict the concentration of Cobalt using the mean of the training dataset.
+
+```{r,eval=F}
 mean((val[,2]-mean(val[,2]))^2)
 ```
 
+Mean Squared Error = 12.617
+
+Interpretation of this method: Using this method is impractical because it predicts the same concentration of Co in all tests without taking into account other factors that may help find the true concentration of Co.
+
+
 2. ANOVA 
 
+Analysis of Variance (ANOVA) is a statistical technique, commonly used to studying differences between two or more group means. ANOVA test is centred on the different sources of variation in a typical variable. ANOVA in R primarily provides evidence of the existence of the mean equality between the groups. This statistical method is an extension of the t-test. It is used in a situation where the factor variable has more than one group.
+
 ```{r}
+library("ggplot2")
+ggplot(jura, aes(x = Landuse, y = Co, fill = Landuse)) +
+    geom_boxplot() +
+    geom_jitter(shape = 15,
+        color = "steelblue",
+        position = position_jitter(0.21)) +
+    theme_classic()
+```
+```{r}
+ggplot(jura, aes(x = Rock, y = Co, fill = Rock)) +
+    geom_boxplot() +
+    geom_jitter(shape = 15,
+        color = "steelblue",
+        position = position_jitter(0.21)) +
+    theme_classic()
+```
+
+H0: The means are equal for both variables
+H1: The means are different for both variables
+
+```{r,eval=F}
 #Fit the anova model
 aov.co = aov(Co~Landuse+Rock,data=jura)
 summary(aov.co)
+```
+
+We can conclude that both Landuse and Rock are statistically different from 0. You can reject the NULL hypothesis and confirm that changing the Landuse or Rock impact the Co concentration.
+
+```{r,eval=FALSE}
 
 #Prediction on the validation locations
 res.aov.val=predict(aov.co,val_loc)
@@ -294,7 +319,13 @@ gridrg = add.variable(res.aov,gridrg,"aov.predict")
 plot(gridrg,pos.legend=1)
 ```
 
+Mean Squared Error = 9.7
+
+
 3. Linear regression of functions of coordinates
+
+Linear regression attempts to model the relationship between two variables by fitting a linear equation to observed data.
+
 
 ```{r,eval=F}
 #Fit the linear model
@@ -318,10 +349,14 @@ gridrg = add.variable(res.trend,gridrg,"trend.predict")
 plot(gridrg,pos.legend=1)
 ```
 
+Mean Squared Error = 11.57367
+
+
+
 4.  N-Nearest neighbours
 
 ```{r,eval=F}
-ns =  3 #number of samples to consider for the prediction
+ns = 3 #number of samples to consider for the prediction
 datrg = db.create(jura)
 datrg = db.locate(datrg,2:3,"x")
 datrg = db.locate(datrg,7,"z")
@@ -342,6 +377,10 @@ plot(res)
 
 ```
 
+Mean Squared Error = 7.08
+
+
+
 5. Inverse distance
 ```{r,eval=F}
 degree = 4
@@ -361,9 +400,92 @@ plot(res)
 
 ```
 
+Mean Squared Error = 7.09
+
+
+
 6. Improve the prediction by using other parameterizations for the previous methods.
 
+Taking number of samples = 4 in N-Nearest neighbours
+```{r,eval=F}
+ns = 4 #number of samples to consider for the prediction
+datrg = db.create(jura)
+datrg = db.locate(datrg,2:3,"x")
+datrg = db.locate(datrg,7,"z")
+m = model.create(1)
+neigh=neigh.create(radius=100,nmini=ns,nmaxi=ns)
+
+
+###
+valrg=db.create(val_loc)
+valrg=db.locate(valrg,2:3,"x")
+res.val = kriging(datrg,valrg,m,neigh)
+mean((res.val[,6]-val[,2])^2,na.rm=T)
+###
+
+
+res = kriging(datrg,gridrg,m,neigh)
+plot(res)
+
+```
+Mean Squared Error : 6.58
+
 7. Use other methods (Local Polynomial Regression, Random Forests, ...).
+
+
+Random Forest
+Random forests or random decision forests are an ensemble learning method for classification, regression and other tasks that operates by constructing a multitude of decision trees at training time.
+```{r,eval=F}
+
+library(randomForest)
+rf <- randomForest(formula = Co ~ Landuse+Rock, mtry = 4,
+                         nodesize = 5,
+                         ntree=500,
+                         data = jura)
+
+rf.val=predict(rf,val_loc)
+
+##
+#Compute score 
+mean((rf.val-val[,2])^2)
+##
+
+#Prediction on the grid
+res.rf=predict(rf,grid)
+
+#Add to the RGeostats db and display
+gridrg = add.variable(res.rf,gridrg,"rf.predict")
+plot(gridrg,pos.legend=1)
+```
+Mean Squared Error : 8.16
+
+
+Local polynomial regression
+```{r,eval=F}
+
+local_pol_reg=loess(formula= Co ~ Xloc+Yloc, data=jura)
+ggplot(jura, aes(Xloc+Yloc, Co) ) +
+  geom_point() +
+  stat_smooth(method = loess, formula = y ~ x)
+
+#Prediction on the validation locations
+local_pol_reg.val=predict(local_pol_reg,val_loc)
+local_pol_reg.val[is.na(local_pol_reg.val)] <- mean(local_pol_reg.val, na.rm = TRUE)
+
+##
+#Compute score 
+mean((local_pol_reg.val-val[,2])^2)
+##
+
+#Prediction on the grid
+res.local_pol_reg=predict(local_pol_reg,grid)
+
+#Add to the RGeostats db and display
+gridrg = add.variable(res.local_pol_reg,gridrg,"trend.predict")
+plot(gridrg,pos.legend=1)
+```
+Mean Squared Error : 8.6139
+
 
 # Univariate analysis
 
@@ -990,13 +1112,265 @@ We could also compare this to the universal kriging case where we got a score of
 
 # Maximum Likelihood estimation
 
-1. Compute the maximum likelihood estimator of the parameters of (some of) your favorite univariate model(s) for the Cobalt concentration. In particular, to improve the prediction, add the explanatory variable *Landuse* to the model and estimate its parameters by maximum likelihood. 
+## Maximum Likelihood estimation
+Here we compute the maximum likelihood estimates of the following model for the cobalt concentrations:
+$$Co(x) = \mu + Y(x)$$
+where $Co$ represents the cobalt concentration, $\mu$ a constant mean and $Y$ a centered Gaussian random field. 
 
-2. Compare the models with and without *Landuse* through a likelihood ratio test.
+We will also consider models of the form:
+$$Co(x) = \mu(x) + Y(x)$$
+where $\mu(x)$ may vary according to the location, e.g. $\mu(x) = X(x)\beta$ with $X$ an explanatory variable.
 
-3. Compute the prediction map and the prediction at the validation locations for each model. Compute the prediction score.
+To do this, we use the **geoR** package. You may need to install it :
 
-4. Try the **SPBayes** package for the multivariate approach (*optional*)).
+```{r,eval=F}
+install.packages('geoR')
+```
+
+
+**geoR** uses a particular class to store spatial data sets : **geodata** (similar to a Rgeostats db). The first thing is hence to transform our data in that class.
+
+```{r}
+library(geoR)
+jura.geoR = as.geodata(jurarg_KU[], coords.col = 2:3, data.col = 7,covar.col = 13:15)
+plot(jura.geoR)
+```
+
+We can also compute variograms in **geoR**.
+
+Without Landuse:
+
+Omnidirectional
+```{r}
+par(mfrow=c(1,2))
+vg <- variog(jura.geoR,uvec = seq(0,4,l=20), bin.cloud = T)
+plot(vg)
+```
+Check for anisotropies
+```{r}
+vg.60 <- variog(jura.geoR,uvec = seq(0,4,l=20), bin.cloud = T,direction = pi/3)
+plot(vg.60)
+```
+
+
+Then according to the covariance structure we want to infer (exponential by default), we can try something like this (see **?likfit** for more details)
+
+```{r}
+mean(jura$Co)
+var(jura$Co)
+ml =likfit(jura.geoR, ini = c(10,0.5), nug = 0.5,fix.psiA = F, psiA = pi/3,fix.psiR = F, psiR=1, trend = trend.spatial(trend = ~Indicator.Rock.1 + Indicator.Rock.2 + Indicator.Rock.3,jura.geoR))
+summary(ml)
+ml2 = likfit(jura.geoR, ini = c(10,0.5), nug = 0.5,fix.psiA = F, psiA = pi/3,fix.psiR = F, psiR=1, trend = trend.spatial(trend = ~Indicator.Rock.1 + Indicator.Rock.2,jura.geoR))
+ml3 = likfit(jura.geoR, ini = c(10,0.5), nug = 0.5,fix.psiA = F, psiA = pi/3,fix.psiR = F, psiR=1)
+```
+
+Likelihood ratio test
+```{r}
+T1.2 = 2 *(ml$loglik-ml2$loglik)
+T3.1 = 2 *(ml$loglik-ml3$loglik)
+T3.2 = 2 *(ml2$loglik-ml3$loglik)
+1-pchisq(T1.2,1) 
+1-pchisq(T3.2,2) 
+1-pchisq(T3.1,3)
+```
+
+
+We can represent the resulting fitting on the variogram
+
+```{r}
+plot(vg)
+lines(ml)
+
+plot(vg.60)
+lines(ml)
+par(mfrow=c(1,1))
+```
+
+
+## Prediction
+
+We perform kriging with the **geoR** functions, on the grid and on the validation locations.
+
+```{r}
+k.grid = krige.conv(jura.geoR,loc =grid[,1:2],krige = krige.control(obj.m=ml3))
+k.val_loc = krige.conv(jura.geoR,loc = val_loc[,1:2],krige = krige.control(obj.m=ml))
+```
+
+Next we plot the resulting kriging and standard deviation maps using RGeostats and compute the MSE on the validation locations.
+
+```{r}
+gridrg = add.variable(k.grid$predict,gridrg,"geoR.k")
+plot(gridrg)
+gridrg = add.variable(sqrt(k.grid$krige.var),gridrg,"geoR.ks")
+plot(gridrg)
+
+MSE_ML = mean((k.val_loc$predict-val[,2])^2)
+print(MSE_ML)
+```
+MSE without Landuuse: 6.988
+
+
+
+
+1. Compute the maximum likelihood estimator of the parameters of (some of) your favorite univariate model(s) for the Cobalt concentration. 
+
+With Landuse:
+
+Omnidirectional
+```{r}
+jura.geoRL = as.geodata(jurarg_KU[], coords.col = 2:3, data.col = 7,covar.col = 13:17)
+plot(jura.geoRL)
+par(mfrow=c(1,2))
+vg <- variog(jura.geoRL,uvec = seq(0,4,l=20), bin.cloud = T)
+plot(vg)
+```
+Check for anisotropies
+```{r}
+vg.60 <- variog(jura.geoRL,uvec = seq(0,4,l=20), bin.cloud = T,direction = pi/3)
+plot(vg.60)
+```
+
+
+Then according to the covariance structure we want to infer (exponential by default), we can try something like this (see **?likfit** for more details)
+
+```{r}
+mean(jura$Co)
+var(jura$Co)
+ml =likfit(jura.geoRL, ini = c(10,0.5), nug = 0.5,fix.psiA = F, psiA = pi/3,fix.psiR = F, psiR=1, trend = trend.spatial(trend = ~Indicator.Rock.1 + Indicator.Rock.2 + Indicator.Rock.3 + Indicator.Landuse.1 + Indicator.Landuse.2,jura.geoRL))
+summary(ml)
+ml2 = likfit(jura.geoRL, ini = c(10,0.5), nug = 0.5,fix.psiA = F, psiA = pi/3,fix.psiR = F, psiR=1, trend = trend.spatial(trend = ~Indicator.Rock.1 + Indicator.Rock.2+ Indicator.Landuse.1,jura.geoRL))
+ml3 = likfit(jura.geoRL, ini = c(10,0.5), nug = 0.5,fix.psiA = F, psiA = pi/3,fix.psiR = F, psiR=1)
+```
+
+Likelihood ratio test
+```{r}
+T1.2 = 2 *(ml$loglik-ml2$loglik)
+T3.1 = 2 *(ml$loglik-ml3$loglik)
+T3.2 = 2 *(ml2$loglik-ml3$loglik)
+1-pchisq(T1.2,1) 
+1-pchisq(T3.2,2) 
+1-pchisq(T3.1,3) 
+```
+
+
+We can represent the resulting fitting on the variogram
+
+```{r}
+plot(vg)
+lines(ml)
+
+plot(vg.60)
+lines(ml)
+par(mfrow=c(1,1))
+```
+
+
+## Prediction
+
+We perform kriging with the **geoR** functions, on the grid and on the validation locations.
+
+```{r}
+k.grid = krige.conv(jura.geoRL,loc =grid[,1:2],krige = krige.control(obj.m=ml3))
+k.val_loc = krige.conv(jura.geoRL,loc = val_loc[,1:2],krige = krige.control(obj.m=ml))
+```
+
+Next we plot the resulting kriging and standard deviation maps using RGeostats and compute the MSE on the validation locations.
+
+```{r}
+gridrg = add.variable(k.grid$predict,gridrg,"jura.geoRL.k")
+plot(gridrg)
+gridrg = add.variable(sqrt(k.grid$krige.var),gridrg,"jura.geoRL.ks")
+plot(gridrg)
+
+val_loc_k = read.csv("jura/jura_val_loc.csv")
+MSE_ML = mean((k.val_loc$predict-val[,2])^2)
+print(MSE_ML)
+```
+MSE : 6.977
+
+
+
+## Bayesian approach
+Same model now but we adopt the Bayesian point of view to better quantify the uncertainties. First, we need to characterize the prior. Note that there is no error analysis available for the anisotropy parameters. Here we use the default for most parameters (see **?prior.control**). We discretize the prior for the range parameter to limit the computations.
+
+```{r,eval=F}
+pr <- prior.control(phi.discrete = seq(0, 1, l=101), phi.prior="rec")
+```
+Now we predict on the validation locations.
+
+```{r,eval=F}
+bsp <- krige.bayes(jura.geoR,loc = val_loc[,1:2],prior = pr, output = output.control(n.post=10000))
+```
+
+Lets have a look at the results. First the posterior distributions of the parameters.
+
+```{r,eval=F}
+hist(bsp$posterior$sample$beta, main="", xlab=expression(beta), prob = T)
+hist(bsp$posterior$sample$sigmasq, main="", xlab=expression(sigma^2), prob = T)
+hist(bsp$posterior$sample$phi, main="", xlab=expression(phi), prob = T)
+```
+
+Now in terms of variogram
+```{r,eval=F}
+plot(vg,ylim=c(0,20))
+lines(bsp, max.dist = 4, summ = mean)
+lines(bsp, max.dist = 4, summ = median, lty = 2)
+lines(bsp, max.dist = 4, summ = "mode", post="par",lwd = 2, lty = 2)
+legend(0, 21, legend = c("variogram posterior mean", "variogram posterior median", "parameters posterior mode"), lty = c(1,2,2), lwd = c(1,1,2), cex = 0.8)
+```
+
+We now look at the posterior prediction at 4 uniformly sampled points among the validation locations.
+
+```{r,eval=F}
+par(mfrow=c(2,2))
+locations.bayes = sample(1:59,4)
+for(i in locations.bayes){
+  ## curve(dnorm(x, mean=k.val_loc$pred[i], sd=sqrt(k.val_loc$krige.var[i])), from=k.val_loc$pred[i] - 3*sqrt(k.val_loc$krige.var[i]), k.val_loc$pred[i] +3*sqrt(k.val_loc$krige.var[i]))
+  kpx <- seq(k.val_loc$pred[i] - 3*sqrt(k.val_loc$krige.var[i]), k.val_loc$pred[i] +3*sqrt(k.val_loc$krige.var[i]), l=100)
+  kpy <- dnorm(kpx, mean=k.val_loc$pred[i], sd=sqrt(k.val_loc$krige.var[i]))
+  bp <- density(bsp$predictive$simulations[i,])
+  rx <- range(c(kpx, bp$x))
+  ry <- range(c(kpy, bp$y))
+  plot(cbind(rx, ry), type="n", xlab=paste("Location", i), ylab="density", xlim=range(kpx), ylim=range(kpy))
+  lines(kpx, kpy, lty=2)
+  lines(bp)
+  }
+```
+
+We compute the score taking the posterior mean as the predictor
+
+```{r,eval=F}
+MSE_bayes.mean = mean((bsp$predictive$mean-val[,2])^2)
+print(MSE_bayes.mean)
+```
+
+We compute the score taking the posterior median as the predictor
+
+```{r,eval=F}
+MSE_bayes.med = mean((apply(bsp$predictive$simulations,1,quantile,probs = .5)-val[,2])^2)
+print(MSE_bayes.med)
+```
+
+
+Now on the grid. This may take some time...
+
+```{r,eval=F}
+bsp4 <- krige.bayes(jura.geoR,loc = grid[,1:2],prior = pr, output = output.control(n.predictive=2))
+```
+Lets have a look at the results
+```{r,eval=F}
+
+gridrg = add.variable(bsp4$predictive$mean,gridrg,"geoR.bk")
+plot(gridrg,title='Bayesian kriging map')
+gridrg = add.variable(sqrt(bsp4$predictive$variance),gridrg,"geoR.bks")
+plot(gridrg,title='Bayesian standard deviation map')
+# simulations 
+gridrg = add.variable(bsp4$predictive$simulations[,1],gridrg,"geoR.bs1")
+plot(gridrg,title='simulation 1')
+gridrg = add.variable(bsp4$predictive$simulations[,2],gridrg,"geoR.bs2")
+plot(gridrg,title='simulation 2')
+```
+
 
 # Conditional simulations
 
