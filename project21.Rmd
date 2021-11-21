@@ -370,13 +370,124 @@ plot(res)
 
 ### Experimental variogram (isotropic case)
 
-1. Compute and plot the experimental variogram of the cobalt concentration (using `vario.calc()`). Try different values of lag and comment the results. 
+1. Compute and plot the experimental variogram of the cobalt concentration (using `vario.calc()`). Try different values of lag and comment the results.
+
+For starters it is important for us to outlie the importance of the variogram when dealing with structural analysis, we will also reinforce the fact that we are dealing with second order stationary random functions.
+
+For a random function Z(x) the variogram is calculated as :
+
+$\gamma(h) =  \frac{1}{2} . Var[Z(x+h) - Z(x)]$
+
+Hence the variogram shows how the difference between the random functions Z(x+h) and Z(x) evolve as a function of the lag h.
+
+The variogram is a powerful tool because unlike the covariance , it does not require a knowledge of the mean which has to be estimated in the case of the covariance and hence could introduce a bias.
+
+We will now proceed to some simulations on R studio , mainly plotting the variogram of the cobalt concentrations with different values of lags.
+
+We will limit our study on lags up till 3. We will start our simulation with 10 lag points , that is a 0.3 lag between a random function and its translated version.
+
+Create the db :
+
+```{r}
+library(RGeostats)
+jurarg = db.create(jura)
+jurarg = db.locate(jurarg,c("Xloc","Yloc"),"x")
+jurarg = db.locate(jurarg,"Co","z")
+```
+
+Compute the empirical variogram (with the function *vario.calc*)
+
+```{r}
+v = vario.calc(jurarg,nlag=10)
+```
+
+Fit a model (with *model.auto*)
+
+```{r}
+m = model.auto(v,struct = c(1,8))
+```
+
+It is intuitive to think that points close to each other (having a low lag) should have similar properties and hence assume close values , and this is further proved by the results of the simulation , when the lag is low (0.3 for the first point for example) the dissimilarity between the two points is low , the dissimilarities further increase when the lag increases. The solid smooth line is the fitted model generated using model.auto.
+
+Let us now increase the value of the lag points to 100 instead of 10 , this will reduce the lag increment by 10 , we get the following results:
+
+```{r}
+v = vario.calc(jurarg,nlag=100)
+m = model.auto(v,struct = c(1,8))
+```
+
+Similarly we can also see at lower lag values the variogram produces smaller results indicated that close points have similar properties.
+
+Let us now increase the value of the lag point to 1000 , we get the following results :
+
+```{r}
+v = vario.calc(jurarg,nlag=1000)
+m = model.auto(v,struct = c(1,8))
+```
+
+At lower lag levels the variogram produces very small values , at higher lag values the variogram produces higher values , however one can notice that beyond a certain point the variogram values do not change much that is Z(x+h) and Z(x) become uncorrelated from that point onward , we are lead to think that this variogram has a sill.
+
+
 2. Print the number of pairs of points used to compute the variogram values (using the options `npairpt=TRUE,npairdw=TRUE` in `plot()`) for different values of lag and comment the results.
+
+Now let us print the number of pairs of points used to represent these variograms , for a lag value of 10,50,100 respectively we get the following results :
+
+```{r}
+v = vario.calc(jurarg,nlag=10)
+draw.vario(v,npairpt = T,npairdw = T)
+```
+
+```{r}
+v = vario.calc(jurarg,nlag=50)
+draw.vario(v,npairpt = T,npairdw = T)
+```
+
+```{r}
+v = vario.calc(jurarg,nlag=100)
+draw.vario(v,npairpt = T,npairdw = T)
+```
+
+As we can see from the simulation results when the lag h decreases ( or respectively  the number of lag points increase) the number of pairs decrease considerably , and this is obvious because when the lag h decreases there will be less and less points within that lag distance and hence the number of pairs of points within that lag h of each other should also decrease.
 
 ### Experimental variogram (anisotropic case)
 
 1. Compute and plot the variogram maps (using `vmap.calc()`) the Cobalt concentration order to check for anisotropies. Comment
+
+So far we have only considered the variogram in the isotropic case in which the variogram does not vary with direction , it is only a function of the modulus of the lag h.
+We will now move on to the anisotropic case where not only the modulus of h is of importance but the direction of h is also important , to check for these anisotropies we will need to plot the variogram map of the cobalt concentration : 
+
+Compute a variogram map
+```{r}
+plot(vmap.calc(jurarg))
+```
+
+We can obviously see that the behavior of the lag in different directions is not the same as the colors in the variogram map tend to change with direction , for example in a -45 degrees direction the dissimilarities between Z(x+h) and Z(x) is way higher than in a 0 degrees direction and this will be shown in the upcoming variograms.
+
 2. Compute and plot directional variograms (according to the anisotropy directions determined with the maps).
+
+We will now plot the variograms for different directions namely 0 , 45 and -45 degrees:
+
+
+Directional variograms
+```{r}
+vdir = vario.calc(jurarg,nlag=10,dir=c(0,-45,45))
+plot(vdir)
+```
+
+The black curve computes the variogram in the 0 degrees direction, the red curve computes it in the -45 degrees direction and the green curve in the 45 degrees direction , the behavior for these 3 curves is quite similar when the lag is small , however when the lag increases we can see that the difference between Z(x+h) and Z(x) is way higher for the red curve (+45 degrees direction) however this is not enough to say the data is anisotropic.
+
+If we try to fit a model for these curves we obtain:
+
+Fit a model
+
+```{r}
+maniso = model.auto(vdir,struct=c(1,2,3,4))
+```
+
+The model fit suggests that the sill is constant however the range for which the sill is obtained is different for the three curves and hence varies with direction suggesting that there may be geometric anisotropies but no zonal anisotropies.
+
+
+
 
 ### Model adjustement
 
@@ -384,15 +495,206 @@ The function `melem.name()` gives the models available in RGeostats.
 
 1. Adjust a model using the function `model.auto()` (isotropic and anisotropic cases) on experimental variograms and print the model caracteristics.
 2. Try imposing different structures or combinations of structures.
+
+Let us first try different models for the isotropic case
+
+K-Bessel function with nugget effect
+```{r}
+model.auto(v,struct=c(1,8))
+```
+
+Gaussian function with nugget effect
+```{r}
+model.auto(v,struct=c(1,4))
+```
+
+Exponential function with nugget effect
+```{r}
+model.auto(v,struct=c(1,2))
+```
+
+Exponential,spherical,K-Bessel function with nugget effect
+```{r}
+model.auto(v,struct=c(1,2,3,8))
+```
+
+Let us try the same models for the anisotropic case
+
+K-Bessel function with nugget effect
+```{r}
+model.auto(vdir,struct=c(1,8))
+```
+
+Gaussian function with nugget effect
+```{r}
+model.auto(vdir,struct=c(1,4))
+```
+
+Exponential function with nugget effect
+```{r}
+model.auto(vdir,struct=c(1,2))
+```
+
+Exponential,spherical,K-Bessel function with nugget effect
+```{r}
+model.auto(vdir,struct=c(1,2,3,8))
+```
+
 3. Compare the models adjusted on the experimental variogram and the variogram map (using `vmap.auto()`).
+
+```{r}
+vmap.auto(vmap.calc(jurarg),struct=c(1,8))
+```
+
+```{r}
+vmap.auto(vmap.calc(jurarg),struct=c(1,4))
+```
+
+```{r}
+vmap.auto(vmap.calc(jurarg),struct=c(1,2))
+```
+
+```{r}
+vmap.auto(vmap.calc(jurarg),struct=c(1,2,3,8))
+```
 
 ## Prediction
 
 ### Ordinary Kriging
 
 1. Compute and plot the ordinary kriging of the cobalt over the prediction grid. Plot the associated standard deviation map.
+2. Try several variogram models (basic structures, anisotropy), and neighborood options. Compute the prediction scores. Comment the results
 
-2. Try several variogram models (basic structures, anisotropy), and neighborood options. Compute the prediction scores. Comment the results.
+
+We will now move on to estimating the cobalt concentrations of the test results using the ordinary kriging method , let us state first that the ordinary kriging method is an interpolation method that assumes that the mean is unknown but constant, it uses the variogram as the basis.
+
+We first have to create the target grid using the following code :
+
+```{r}
+jurarg = db.create(jura)
+jurarg = db.locate(jurarg,c("Xloc","Yloc"),"x")
+jurarg = db.locate(jurarg,"Co","z")
+
+v = vario.calc(jurarg,nlag=500)
+
+m = model.auto(v,struct = c(1,8))
+
+grid = read.csv("./data_set/jura/jura_grid.csv")
+gridtemp = db.create(grid)
+gridtemp = db.locate(gridtemp,c("Xloc","Yloc"),"x")
+nx = c(length(unique(grid[,1])),length(unique(grid[,2])))
+gridrg = db.grid.init(gridtemp,nodes=nx)
+gridrg = migrate(gridtemp,gridrg,names=4:gridtemp$natt,radix="")
+gridrg = db.rename(gridrg,2:3,c("Xloc","Yloc"))
+gridrg = db.sel(gridrg,!is.na(gridrg[,"Landuse"])&!is.na(gridrg[,"Rock"]))
+```
+
+Next we will have to apply the ordinary kriging on the grid we have just created and plot the result:
+
+```{r}
+neigh = neigh.create(type = 0)
+res=kriging(jurarg,gridrg,m,neigh)
+plot(res)
+```
+
+This plot shows us the different possible estimated cobalt concentrations based on the Xloc on the horizontal axis and the Yloc on the vertical axis , the red color indicating high cobalt concentration , the blue color indicating lower cobalt concentration while the green and yellow colors are inbetween.
+
+Next we can apply the ordinary kriging on the validation set using the following code:
+
+```{r}
+neigh = neigh.create(nmini=10,nmaxi=30,radius=1)
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)
+```
+
+The neighborhood we took into consideration here is a moving neighborhood with 10 minimum points in the neighborhood and 30 maximum points in the neighborhood.
+
+We get a prediction score of : 7.176295
+
+As an attempt to improve this prediction score we will try to use different combinations of basic structures, let us first try using the sector option in the neighborhood:
+
+```{r}
+neigh = neigh.create(nmini=10,nmaxi=30,radius=3,flag.sector = T,nsect=12,nsmax=30)
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)
+```
+
+This gives us a prediction score of  : 7.146272 which is an improvement of the previous score.
+
+Let us attempt an anisotropic model as opposed to the previous isotropic model , for this purpose the radius can no longer be constant but has to be a vector equal to the dimension we are working with. In this case the dimension is equal to 2 since we are only working alongside 2 parameters the Xloc and Yloc. We will try an ellipsoid c(3,3.5) and rotating this ellipsoid a -45 degrees angle , the code is as follows : 
+
+Ordinary kriging on the validation set anisotropic case
+
+```{r}
+v = vario.calc(jurarg,nlag=100)
+m = model.auto(v,struct = c(1,2))
+radvec1=c(3,3.5)
+angle=-45
+rotmat1 = matrix(
+  c(cos(angle), -sin(angle), sin(angle), cos(angle)),
+  nrow = 2,            
+  ncol = 2,            
+  byrow = TRUE         
+)
+neigh=neigh.create(type=2,nmini=10,nmaxi=30,radius=radvec1,flag.sector=T,flag.aniso=T,nsect=10,nsmax=30,flag.rotation=T,rotmat = rotmat1)
+neigh = neigh.create(nmini=10,nmaxi=30,radius=1)
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)
+```
+
+The prediction score we got was :  7.942153 which is worse than the isotropic case.
+
+We will try right now changing the structure , the structure we have used so far c(1,8) takes into account the nugget effect and generates a K-bessel model , we will now attempt a power model incorporating the nugget effect c(1,13) : 
+
+```{r}
+v = vario.calc(jurarg,nlag=300)
+m = model.auto(v,struct = c(1,13))
+neigh = neigh.create(nmini=10,nmaxi=30,radius=2.5)
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)
+```
+
+
+The prediction score we get is : 7.011163 which is an improvement to the previous score.
+
+Let us now try the order 1 G-C model , using :
+
+```{r}
+v = vario.calc(jurarg,nlag=300)
+m = model.auto(v,struct = c(1,14))
+neigh = neigh.create(nmini=10,nmaxi=30,radius=2.5)
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)
+```
+
+The prediction score we get is : 6.783702 which is a huge improvement , we could have also done a combination of models such as c(1,8,2,5).
+
+We could also try changing the type of the neighborhood for example : 
+
+```{r}
+v = vario.calc(jurarg,nlag=300)
+m = model.auto(v,struct = c(1,14))
+neigh = neigh.create(type=0)
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)
+```
+
+However this gives a prediction score of : 6.838635 which is worse than when we used the moving neighborhood.
+
+
+.
 
 ### Universal kriging
 
@@ -444,8 +746,121 @@ mean((res_valKU[,"Kriging*estim"]-val[,2])^2)
 ```
 
 1. Add the *Landuse* predictor to the model. 
-
 2. Try several variogram models (basic structures, anisotropy), and neighborood options. Compare the prediction scores. Comment the results.
+
+
+The difference between the universal kriging and the ordinary kriging lies in the mean , while the mean is still unknown in the universal kriging  , it is no longer a constant and has a drift model that depends on the coordinates , the provided code used “Rock” as an indicator and gave a prediction score of 7.225692 , let us try adding the Landuse predictor to the model instead : 
+
+Transformation of the factors into indicators
+
+```{r}
+indiccut = limits.create(mini=c(1,2,3),maxi=c(2,3,4))
+
+jurarg_KU=db.indicator(jurarg,indiccut,name="Landuse")
+jurarg_KU = db.locate(jurarg_KU,"Indicator*","f")
+jurarg_KU = db.locate(jurarg_KU,"Co","z")
+
+gridrg_KU=db.indicator(gridrg,indiccut,name="Landuse")
+gridrg_KU = db.locate(gridrg_KU,"Indicator*","f")
+gridrg_KU = db.locate(gridrg_KU,"Co","z")
+
+val_locrg_KU=db.indicator(val_locrg,indiccut,name="Landuse")
+val_locrg_KU = db.locate(val_locrg_KU,"Indicator*","f")
+val_locrg_KU = db.locate(val_locrg_KU,"Co","z")
+```
+
+Variogram of the residuals
+
+```{r}
+drift = c("1","f1","f2","f3")
+vres = vario.calc(jurarg_KU,nlag=10,uc=drift)
+plot(v)
+plot(vres,add=T,col=2)
+mres=model.auto(vres,struct=c(1,2))
+```
+
+Universal kriging on the validation set
+
+```{r}
+drift = c("1","f1","f2","f3")
+vres = vario.calc(jurarg_KU,nlag=100,uc=drift)
+mres=model.auto(vres,struct=c(1,8))
+neigh = neigh.create(type=0)
+res_valKU=kriging(jurarg_KU,val_locrg_KU,mres,neigh,uc=drift)
+mean((res_valKU[,"Kriging*estim"]-val[,2])^2)
+```
+
+Let us try now changing the models , the model that was used c(1,8) takes into account the nugget effect while simulating a K-bessel model ,let us try an exponential model with c(1,2) instead  : 
+
+```{r}
+mres=model.auto(vres,struct=c(1,2))
+res_valKU=kriging(jurarg_KU,val_locrg_KU,mres,neigh,uc=drift)
+mean((res_valKU[,"Kriging*estim"]-val[,2])^2)
+```
+
+The prediction score becomes 7.01927 which is considerably worse than when the K-Bessel model was used.
+
+Let us try the “Order-1-Gc” model given by c(1,14) : 
+We get a prediction score of 6.10542 which is considerably better than both cases.
+```{r}
+mres=model.auto(vres,struct=c(1,14))
+res_valKU=kriging(jurarg_KU,val_locrg_KU,mres,neigh,uc=drift)
+mean((res_valKU[,"Kriging*estim"]-val[,2])^2)
+```
+
+So far we had our neighborhood type set to  0 which is the unique neighborhood case Let us now try the case of the moving neighborhood , with sectors and anisotropies , the code becomes :
+
+Transformation of the factors into indicators
+
+```{r}
+indiccut = limits.create(mini=c(1,2,3),maxi=c(2,3,4))
+
+jurarg_KU=db.indicator(jurarg,indiccut,name="Landuse")
+jurarg_KU = db.locate(jurarg_KU,"Indicator*","f")
+jurarg_KU = db.locate(jurarg_KU,"Co","z")
+
+gridrg_KU=db.indicator(gridrg,indiccut,name="Landuse")
+gridrg_KU = db.locate(gridrg_KU,"Indicator*","f")
+gridrg_KU = db.locate(gridrg_KU,"Co","z")
+
+val_locrg_KU=db.indicator(val_locrg,indiccut,name="Landuse")
+val_locrg_KU = db.locate(val_locrg_KU,"Indicator*","f")
+val_locrg_KU = db.locate(val_locrg_KU,"Co","z")
+```
+
+Variogram of the residuals
+
+```{r}
+drift = c("1","f1","f2","f3")
+vres = vario.calc(jurarg_KU,nlag=10,uc=drift)
+plot(v)
+plot(vres,add=T,col=2)
+mres=model.auto(vres,struct=c(1,2))
+```
+
+Universal kriging on the grid
+
+```{r}
+neigh=neigh.create(type=0)
+res_gridKU=kriging(jurarg_KU,gridrg_KU,mres,neigh,uc=drift)
+plot(res_gridKU)
+```
+
+Universal kriging on the validation set
+
+```{r}
+drift = c("1","f1","f2","f3")
+vres = vario.calc(jurarg_KU,nlag=100,uc=drift)
+mres=model.auto(vres,struct=c(1,14))
+radvec=c(2.2,2.6)
+neigh = neigh.create(type=2,nmini=5,nmaxi=5,radius=radvec,flag.sector = T,flag.aniso=T,nsect = 52,nsmax = 100)
+res_valKU=kriging(jurarg_KU,val_locrg_KU,mres,neigh,uc=drift)
+mean((res_valKU[,"Kriging*estim"]-val[,2])^2)
+```
+
+This prediction score is better than anything we have seen so far. 
+
+
 
 *Optional:*
 
@@ -456,10 +871,31 @@ You can do the same with the interaction. Hint: consider the product *Landuse* x
 ## Variography
 
 1. Compute the  empirical directional variograms and covariograms of a carefully chosen (justify) set of variables.
-
 What would you conclude about anisotropy ?
 
 2. Fit a model (with *model.auto*).
+
+
+Let us compute the empirical directional variograms and covariograms of the variables,  we will use cobalt zinc and copper as the regionalized varaibles just as follows , Xloc and Yloc have been previously set as the space dimension.
+
+```{r}
+jurarg = db.locate(jurarg,c("Co","Zn","Cu"),"z")
+vdir = vario.calc(jurarg,nlag=10,dir=c(-10,35,80,125))
+plot(vdir)
+```
+
+The plots on the diagonals are the specific variograms for Cobalt , Zinc and Copper , and the ones excluded from the diagonal are the cross variograms between each of the two metals , each colored curve in each plot represents one of the directions in our dir column vector defined above.
+
+When first looking at the colored curves , the data doesn’t seem to be anisotropic even though the values don’t tend to be the same when the lag increases , this difference isn’t that significant to say that the sill is different or the data is zonal anisotropic. The range also doesn’t seem to vary with direction which leads us to think that the data isn’t geometric anisotropic.
+
+We will now fit a model to these directional variograms:
+
+```{r}
+m = model.auto(vdir,struct=c(1,8))
+```
+
+The model that was fitted coincides for all the directional curves which reinforces our statement above.
+
 
 ## Prediction
 
@@ -467,6 +903,89 @@ What would you conclude about anisotropy ?
 Compute the prediction score.
 
 2. You can also try to implement the universal cokriging (*optional*).
+
+
+Let us now try to interpolate the Co concentrations using the ordinary cokriging , the code is as follows : 
+
+Creation of the target grid.
+
+```{r}
+grid = read.csv("./data_set/jura/jura_grid.csv")
+gridtemp = db.create(grid)
+gridtemp = db.locate(gridtemp,c("Xloc","Yloc"),"x")
+nx = c(length(unique(grid[,1])),length(unique(grid[,2])))
+gridrg = db.grid.init(gridtemp,nodes=nx)
+gridrg = migrate(gridtemp,gridrg,names=4:gridtemp$natt,radix="")
+gridrg = db.rename(gridrg,2:3,c("Xloc","Yloc"))
+gridrg = db.sel(gridrg,!is.na(gridrg[,"Landuse"])&!is.na(gridrg[,"Rock"]))
+```
+
+```{r}
+neigh = neigh.create(type = 0)
+res = kriging(jurarg,gridrg,m,neigh)
+plot(res,sub="Cokriging of Co")
+```
+
+Now perform Ordinary Cokriging on the validation set.
+
+```{r}
+val_locrg = db.create(val_loc)
+val_locrg = db.locate(val_locrg,c("Xloc","Yloc"),"x")
+res_val = kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging.Co.estim"]-val[,2])^2)  ## MSE for Cokriging
+```
+
+We could also attempt to plot all the vmaps and the standard deviation maps as follows : 
+
+```{r}
+neigh = neigh.create(type = 0)
+res = kriging(jurarg,gridrg,m,neigh)
+plot(res,sub="Cokriging of Co")
+v=vmap.calc(jurarg)
+std_co=sqrt(v$items[["VMAP.Co"]])
+std_zn_co=sqrt(v$items[["VMAP.Zn.Co"]])
+std_zn=sqrt(v$items[["VMAP.Zn"]])
+std_cu_co=sqrt(v$items[["VMAP.Cu.Co"]])
+std_cu_zn=sqrt(v$items[["VMAP.Cu.Zn"]])
+std_cu=sqrt(v$items[["VMAP.Cu"]])
+v1=db.add(v,std_co,std_zn_co,std_zn,std_cu_co,std_cu_zn,std_cu)
+par(mfrow=c(2,3))
+plot(v1,pos.x = 1,pos.y = 2,name="VMAP.Co")
+plot(v1,pos.x = 1,pos.y = 2,name="VMAP.Zn.Co")
+plot(v1,pos.x = 1,pos.y = 2,name="VMAP.Zn")
+plot(v1,pos.x = 1,pos.y = 2,name="VMAP.Cu.Co")
+plot(v1,pos.x = 1,pos.y = 2,name="VMAP.Cu.Zn")
+plot(v1,pos.x = 1,pos.y = 2,name="VMAP.Cu")
+plot(v1,pos.x = 1,pos.y = 2,name="std_co")
+plot(v1,pos.x = 1,pos.y = 2,name="std_zn_co")
+plot(v1,pos.x = 1,pos.y = 2,name="std_zn")
+plot(v1,pos.x = 1,pos.y = 2,name="std_cu_co")
+plot(v1,pos.x = 1,pos.y = 2,name="std_cu_zn")
+plot(v1,pos.x = 1,pos.y = 2,name="std_cu")
+
+```
+
+Now we can compare this with the ordinary kriging results by just removing Zn and Cu from our regionalized variables and computing the prediction score once again :
+
+```{r}
+jurarg <- db.locate(jurarg, c("Zn","Cu"))# Remove Zn,Cu
+
+# Variogram
+v = vario.calc(jurarg,nlag=12)
+m = model.auto(v,c(1,3,3))
+
+# Ordinary Kriging
+neigh = neigh.create(type = 0)
+res=kriging(jurarg,gridrg,m,neigh) 
+plot(res,sub="Kriging of Co")
+
+# Ordinary Kriging on val
+res_val=kriging(jurarg,val_locrg,m,neigh)
+mean((res_val[,"Kriging*estim"]-val[,2])^2)  ## MSE for Ordinary kriging
+```
+
+We get the following prediction score : 6.939636 which is better than the case where Zn and Cu were a part of the regionalized variables.
+We could also compare this to the universal kriging case where we got a score of 7.088469.
 
 # Maximum Likelihood estimation
 
