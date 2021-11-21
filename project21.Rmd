@@ -167,24 +167,25 @@ summary(aov.zn)
 # Utilities
 Load RGeostats.
 
-```{r,eval=F}
+```{r}
+library(Rcpp) 
 library(RGeostats) 
 constant.define("asp",1) #environment variable for the scale ratio between axes
 ```
 
 Load the data set and the prediction grid
 
-```{r,eval=F}
+```{r}
 #Data set
-jura_tot = read.csv("../jura/jura_pred.csv")
+jura_tot = read.csv("../../jura/jura_pred.csv")
 #Prediction grid
-grid = read.csv("../jura/jura_grid.csv")
+grid = read.csv("../../jura/jura_grid.csv")
 names(jura_tot)
 names(grid)
 ```
 
 Coding of the factors
-```{r,eval=F}
+```{r}
 jura_tot$Landuse = as.factor(jura_tot$Landuse)
 jura_tot$Rock = as.factor(jura_tot$Rock)
 
@@ -194,7 +195,7 @@ grid$Rock = as.factor(grid$Rock)
 
 Change the names of the modalities to be consistent with their names on the grid
 
-```{r,eval=F}
+```{r}
 levels(jura_tot$Landuse)
 levels(grid$Landuse)
 levels(jura_tot$Landuse)=c("Forest","Pasture","Meadow","Tillage")
@@ -208,7 +209,7 @@ Separate the data set in two sets : the training set and the validation set.
 For the project, you should use the full data set for the training.
 You submit the prediction on Kaggle for a set of locations on which you only know the locations and the factors.
 
-```{r,eval=F}
+```{r}
 set.seed(1234) #Set the seed of the random generators
 
 ntot = nrow(jura_tot)
@@ -232,7 +233,7 @@ val = cbind(1:nval,jura_tot[indval,]$Co)
 
 RGeostats target grid and utilities for display 
 
-```{r,eval=F}
+```{r}
 gridtemp = db.create(grid)
 gridtemp = db.locate(gridtemp,c("Xloc","Yloc"),"x")
 nx = c(length(unique(grid[,1])),length(unique(grid[,2])))
@@ -265,13 +266,13 @@ Provide the maps of the cobalt concentration over the Swiss Jura obtained with s
 
 1. Prediction by the mean
 
-```{r,eval=F}
+```{r}
 mean((val[,2]-mean(val[,2]))^2)
 ```
 
 2. ANOVA 
 
-```{r,eval=F}
+```{r}
 #Fit the anova model
 aov.co = aov(Co~Landuse+Rock,data=jura)
 summary(aov.co)
@@ -531,7 +532,7 @@ model.auto(vdir,struct=c(1,4))
 ```
 
 Exponential function with nugget effect
-```{r}
+```{r,eval=FALSE}
 model.auto(vdir,struct=c(1,2))
 ```
 
@@ -579,7 +580,7 @@ v = vario.calc(jurarg,nlag=500)
 
 m = model.auto(v,struct = c(1,8))
 
-grid = read.csv("./data_set/jura/jura_grid.csv")
+grid = read.csv("../../jura/jura_grid.csv")
 gridtemp = db.create(grid)
 gridtemp = db.locate(gridtemp,c("Xloc","Yloc"),"x")
 nx = c(length(unique(grid[,1])),length(unique(grid[,2])))
@@ -910,7 +911,7 @@ Let us now try to interpolate the Co concentrations using the ordinary cokriging
 Creation of the target grid.
 
 ```{r}
-grid = read.csv("./data_set/jura/jura_grid.csv")
+grid = read.csv("../../jura/jura_grid.csv")
 gridtemp = db.create(grid)
 gridtemp = db.locate(gridtemp,c("Xloc","Yloc"),"x")
 nx = c(length(unique(grid[,1])),length(unique(grid[,2])))
@@ -996,6 +997,7 @@ We could also compare this to the universal kriging case where we got a score of
 3. Compute the prediction map and the prediction at the validation locations for each model. Compute the prediction score.
 
 4. Try the **SPBayes** package for the multivariate approach (*optional*)).
+
 # Conditional simulations
 
 The information threshold for the concentration of cobalt in soils is *12 mg/kg*. 
@@ -1005,21 +1007,23 @@ The information threshold for the concentration of cobalt in soils is *12 mg/kg*
 Example with the ordinary kriging (where mres is the fitted variogram of the cobalt)
 
 ```{r}
-#res_simu = simtub(jurarg_KU,gridrg_KU,mres,neigh,nbsimu=100,nbtuba=1000)
+res_simu = simtub(jurarg_KU,gridrg_KU,mres,neigh,nbsimu=100,nbtuba=1000)
 ```
 
 2. Compute the mean surface of the area of exceedance as well as its associated centered 95% confidence interval.
 ```{r}
-#res_simu[,"Simu.Co.S*"] = res_simu[,"Simu.Co.S*"]>12
-#res_simu[,"Simu.Co.S1"] <- rowMeans(res_simu[,"Simu.Co.S*"])
+res_simu[,"Simu.Co.S*"] = res_simu[,"Simu.Co.S*"]>12
+res_simu[,"Simu.Co.S1"] <- rowMeans(res_simu[,"Simu.Co.S*"])
+print("The mean surface of the area of exceedance is:" + mean(rowMeans(res_simu[,"Simu.Co.S*"])))
+
 ```
 
 3. Compute and plot the exceedance probability map. Comment.
 ```{r}
-#plot(res_simu,name="Simu.Co.S1",pos.legend=1)
+plot(res_simu,name="Simu.Co.S1",pos.legend=1)
 ```
 
 # Summary -- Discussion
 
-# Appendix: description of the predictions submitted on kaggle (models, parameters) and corresponding prediction maps.
+
 
