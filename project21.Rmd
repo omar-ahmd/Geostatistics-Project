@@ -477,14 +477,6 @@ Compute the prediction score.
 3. Compute the prediction map and the prediction at the validation locations for each model. Compute the prediction score.
 
 4. Try the **SPBayes** package for the multivariate approach (*optional*)).
-
-# Bayesian (*optional*)
-
-1. To improve the prediction, add the explanatory variables to the model and estimate the posterior distribution of the parameters.
-
-2. The Bayesian approach is available in the multivariate case in the package **SPBayes**. Give it a try!
-
-
 # Conditional simulations
 
 The information threshold for the concentration of cobalt in soils is *12 mg/kg*. 
