@@ -1137,6 +1137,24 @@ where $\mu(x)$ may vary according to the location, e.g. $\mu(x) = X(x)\beta$ wit
 To do this, we use the **geoR** package. You may need to install it :
 
 ```{r, eval = FALSE}
+indiccut.rock = limits.create(mini=c(1,2,3),maxi=c(2,3,4))
+indiccut.lu = limits.create(mini=c(1,2),maxi=c(2,3))
+
+
+jurarg_KU = db.indicator(jurarg,indiccut.rock,name="Rock")
+jurarg_KU = db.indicator(jurarg_KU,indiccut.lu,name="Landuse")
+
+jurarg_KU = db.locate(jurarg_KU,"Indicator*","f")
+jurarg_KU = db.locate(jurarg_KU,"Co","z")
+
+gridrg_KU=db.indicator(gridrg,indiccut.rock,name="Rock")
+gridrg_KU=db.indicator(gridrg,indiccut.rock,name="Rock")
+gridrg_KU = db.locate(gridrg_KU,"Indicator*","f")
+gridrg_KU = db.locate(gridrg_KU,"Co","z")
+
+val_locrg_KU=db.indicator(val_locrg,indiccut.rock,name="Rock")
+val_locrg_KU = db.locate(val_locrg_KU,"Indicator*","f")
+val_locrg_KU = db.locate(val_locrg_KU,"Co","z")
 install.packages('geoR')
 ```
 
