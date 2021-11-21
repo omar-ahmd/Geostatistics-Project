@@ -258,6 +258,7 @@ add.variable =function(var,grid,varname,gridtemp.=gridtemp)
 
 In this method we will predict the concentration of Cobalt using the mean of the training dataset.
 
+
 ```{r}
 mean((val[,2]-mean(val[,2]))^2)
 ```
@@ -271,6 +272,7 @@ Interpretation of this method: Using this method is impractical because it predi
 
 Analysis of Variance (ANOVA) is a statistical technique, commonly used to studying differences between two or more group means. ANOVA test is centred on the different sources of variation in a typical variable. ANOVA in R primarily provides evidence of the existence of the mean equality between the groups. This statistical method is an extension of the t-test. It is used in a situation where the factor variable has more than one group.
 
+
 ```{r}
 library("ggplot2")
 ggplot(jura, aes(x = Landuse, y = Co, fill = Landuse)) +
@@ -280,7 +282,6 @@ ggplot(jura, aes(x = Landuse, y = Co, fill = Landuse)) +
         position = position_jitter(0.21)) +
     theme_classic()
 ```
-
 ```{r}
 ggplot(jura, aes(x = Rock, y = Co, fill = Rock)) +
     geom_boxplot() +
@@ -293,13 +294,14 @@ ggplot(jura, aes(x = Rock, y = Co, fill = Rock)) +
 H0: The means are equal for both variables
 H1: The means are different for both variables
 
-```{r}
+```{r,eval=F}
 #Fit the anova model
 aov.co = aov(Co~Landuse+Rock,data=jura)
 summary(aov.co)
 ```
 
 We can conclude that both Landuse and Rock are statistically different from 0. You can reject the NULL hypothesis and confirm that changing the Landuse or Rock impact the Co concentration.
+
 
 ```{r}
 
@@ -326,6 +328,7 @@ Mean Squared Error = 9.7
 3. Linear regression of functions of coordinates
 
 Linear regression attempts to model the relationship between two variables by fitting a linear equation to observed data.
+
 
 
 ```{r}
@@ -355,6 +358,7 @@ Mean Squared Error = 11.57367
 
 
 4.  N-Nearest neighbours
+
 
 ```{r}
 ns = 3 #number of samples to consider for the prediction
@@ -408,6 +412,7 @@ Mean Squared Error = 7.09
 6. Improve the prediction by using other parameterizations for the previous methods.
 
 Taking number of samples = 4 in N-Nearest neighbours
+
 ```{r}
 ns = 4 #number of samples to consider for the prediction
 datrg = db.create(jura)
@@ -436,6 +441,7 @@ Mean Squared Error : 6.58
 
 Random Forest
 Random forests or random decision forests are an ensemble learning method for classification, regression and other tasks that operates by constructing a multitude of decision trees at training time.
+
 ```{r}
 
 library(randomForest)
@@ -462,6 +468,7 @@ Mean Squared Error : 8.16
 
 
 Local polynomial regression
+
 ```{r}
 
 local_pol_reg=loess(formula= Co ~ Xloc+Yloc, data=jura)
@@ -1126,6 +1133,7 @@ We will also consider models of the form:
 $$Co(x) = \mu(x) + Y(x)$$
 where $\mu(x)$ may vary according to the location, e.g. $\mu(x) = X(x)\beta$ with $X$ an explanatory variable.
 
+
 To do this, we use the **geoR** package. You may need to install it :
 
 ```{r, eval = FALSE}
@@ -1142,6 +1150,7 @@ plot(jura.geoR)
 ```
 
 We can also compute variograms in **geoR**.
+
 
 Without Landuse:
 
@@ -1298,16 +1307,19 @@ MSE : 6.977
 ## Bayesian approach
 Same model now but we adopt the Bayesian point of view to better quantify the uncertainties. First, we need to characterize the prior. Note that there is no error analysis available for the anisotropy parameters. Here we use the default for most parameters (see **?prior.control**). We discretize the prior for the range parameter to limit the computations.
 
+
 ```{r}
 pr <- prior.control(phi.discrete = seq(0, 1, l=101), phi.prior="rec")
 ```
 Now we predict on the validation locations.
+
 
 ```{r}
 bsp <- krige.bayes(jura.geoR,loc = val_loc[,1:2],prior = pr, output = output.control(n.post=10000))
 ```
 
 Lets have a look at the results. First the posterior distributions of the parameters.
+
 
 ```{r}
 hist(bsp$posterior$sample$beta, main="", xlab=expression(beta), prob = T)
@@ -1316,6 +1328,7 @@ hist(bsp$posterior$sample$phi, main="", xlab=expression(phi), prob = T)
 ```
 
 Now in terms of variogram
+
 ```{r}
 plot(vg,ylim=c(0,20))
 lines(bsp, max.dist = 4, summ = mean)
@@ -1325,6 +1338,7 @@ legend(0, 21, legend = c("variogram posterior mean", "variogram posterior median
 ```
 
 We now look at the posterior prediction at 4 uniformly sampled points among the validation locations.
+
 
 ```{r}
 par(mfrow=c(2,2))
@@ -1344,12 +1358,14 @@ for(i in locations.bayes){
 
 We compute the score taking the posterior mean as the predictor
 
+
 ```{r}
 MSE_bayes.mean = mean((bsp$predictive$mean-val[,2])^2)
 print(MSE_bayes.mean)
 ```
 
 We compute the score taking the posterior median as the predictor
+
 
 ```{r}
 MSE_bayes.med = mean((apply(bsp$predictive$simulations,1,quantile,probs = .5)-val[,2])^2)
@@ -1359,11 +1375,13 @@ print(MSE_bayes.med)
 
 Now on the grid. This may take some time...
 
+
 ```{r}
 bsp4 <- krige.bayes(jura.geoR,loc = grid[,1:2],prior = pr, output = output.control(n.predictive=2))
 ```
 Lets have a look at the results
 ```{r}
+
 
 gridrg = add.variable(bsp4$predictive$mean,gridrg,"geoR.bk")
 plot(gridrg,title='Bayesian kriging map')
